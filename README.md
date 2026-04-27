@@ -1,5 +1,4 @@
 # SecureFS-v2
-# 🔐 SecureFS v2
 
 ### A Role-Based Encrypted File System with Blockchain-Anchored Audit Trails
 
@@ -7,46 +6,46 @@ SecureFS v2 is a browser-deployable encrypted file system designed for **multi-u
 
 ---
 
-## 🚀 Features
+##  Features
 
-* 🔒 **AES-256-GCM Encryption (AEAD)**
+*  **AES-256-GCM Encryption (AEAD)**
 
   * Ensures confidentiality + integrity in a single operation
   * Detects any tampering before decryption
 
-* 🧑‍💼 **Identity-Bound Encryption**
+*  **Identity-Bound Encryption**
 
   * Files are cryptographically tied to a specific user identity
   * Unauthorized users cannot decrypt—even with correct keys
 
-* 🏢 **Six-Role RBAC Model**
+*  **Six-Role RBAC Model**
 
   * Developer, Admin, Manager, User, Auditor, Read-Only
   * Enforces **principle of least privilege**
 
-* 📜 **Blockchain-Based Audit Trail**
+*  **Blockchain-Based Audit Trail**
 
   * SHA-256 hash-linked logs
   * Fully tamper-evident and verifiable
 
-* 🚨 **Sliding Window Intrusion Detection**
+*  **Sliding Window Intrusion Detection**
 
   * Detects brute-force attempts
   * Auto-lockout after repeated failed logins
 
-* 🌐 **Browser-Only Deployment**
+*  **Browser-Only Deployment**
 
   * Runs as a **single HTML file**
   * No installation, no dependencies, no backend required
 
-* 🔁 **Dual-Mode Operation**
+*  **Dual-Mode Operation**
 
   * Works offline (browser storage)
   * Optional Python backend for persistent storage
 
 ---
 
-## 🧠 Architecture Overview
+##  Architecture Overview
 
 SecureFS v2 consists of the following core components:
 
@@ -81,7 +80,7 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## 📊 Why SecureFS v2?
+##  Why SecureFS v2?
 
 | Feature                   | Traditional Tools | SecureFS v2 |
 | ------------------------- | ----------------- | ----------- |
@@ -93,7 +92,7 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## 🛠️ Technologies Used
+##  Technologies Used
 
 * **Web Crypto API** (AES-GCM, PBKDF2, SHA-256)
 * **JavaScript (Vanilla)**
@@ -101,15 +100,15 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## ⚙️ How to Use
+##  How to Use
 
-### 🔹 Browser Mode (Default)
+###  Browser Mode (Default)
 
 1. Download the `.html` file
 2. Open it in any modern browser
 3. Start using SecureFS immediately
 
-### 🔹 Server Mode (Optional)
+###  Server Mode (Optional)
 
 1. Run the Python backend server
 2. Open the frontend in browser
@@ -117,7 +116,7 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## 🔐 Security Highlights
+##  Security Highlights
 
 * No external libraries → **no supply-chain risk**
 * Hardware-accelerated crypto via browser
@@ -127,7 +126,7 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## ⚠️ Limitations
+##  Limitations
 
 * No plausible deniability (hidden volumes)
 * Uses PBKDF2 (Argon2 planned for future)
@@ -136,7 +135,7 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## 🔮 Future Improvements
+##  Future Improvements
 
 * Argon2-based key derivation
 * Distributed blockchain audit system
@@ -144,16 +143,4 @@ SecureFS v2 consists of the following core components:
 * Enhanced UI/UX for enterprise adoption
 
 ---
-
-## ⭐ Acknowledgment
-
-Inspired by research in:
-
-* AES-GCM (NIST)
-* RBAC (NIST Standard)
-* Blockchain (Nakamoto)
-* Web Crypto API (W3C)
-
----
-
 
