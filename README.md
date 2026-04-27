@@ -98,8 +98,6 @@ SecureFS v2 consists of the following core components:
 * **Web Crypto API** (AES-GCM, PBKDF2, SHA-256)
 * **JavaScript (Vanilla)**
 * **HTML5**
-* **Python (optional backend)**
-* **SQLite (server mode)**
 
 ---
 
@@ -147,13 +145,6 @@ SecureFS v2 consists of the following core components:
 
 ---
 
-## 📄 Author
-
-**Gudabandi Gagan**
-B.Tech CSE, Lovely Professional University
-
----
-
 ## ⭐ Acknowledgment
 
 Inspired by research in:
@@ -165,5 +156,4 @@ Inspired by research in:
 
 ---
 
----
 
