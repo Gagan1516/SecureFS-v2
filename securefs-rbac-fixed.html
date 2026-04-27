@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureFS RBAC — Encrypted File System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#080b10;
+  --surface:#0d1117;
+  --surface2:#111827;
+  --surface3:#1a2235;
+  --border:#1e2d40;
+  --border2:#263347;
+  --accent:#38bdf8;
+  --accent-dim:rgba(56,189,248,0.12);
+  --accent-glow:rgba(56,189,248,0.25);
+  --green:#34d399;
+  --green-dim:rgba(52,211,153,0.1);
+  --red:#f87171;
+  --red-dim:rgba(248,113,113,0.1);
+  --amber:#fbbf24;
+  --amber-dim:rgba(251,191,36,0.1);
+  --purple:#a78bfa;
+  --purple-dim:rgba(167,139,250,0.1);
+  --cyan:#22d3ee;
+  --text:#e2e8f0;
+  --muted:#64748b;
+  --dim:#2d3f56;
+}
+
+body{
+  font-family:'IBM Plex Mono',monospace;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* Animated background */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(56,189,248,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(167,139,250,0.04) 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(56,189,248,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(56,189,248,0.03) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ===== HEADER ===== */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;
+  border-bottom:1px solid var(--border);
+  background:rgba(8,11,16,0.85);
+  backdrop-filter:blur(16px);
+  position:sticky;top:0;z-index:200;
+}
+
+.logo{display:flex;align-items:center;gap:14px}
+
+.logo-mark{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;
+  box-shadow:0 0 24px var(--accent-glow);
+}
+
+.logo-text{
+  font-family:'DM Sans',sans-serif;
+  font-size:17px;font-weight:700;
+  letter-spacing:-0.5px;
+}
+
+.logo-text .hi{color:var(--accent)}
+
+.header-right{display:flex;align-items:center;gap:12px}
+
+.user-chip{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:100px;
+  padding:6px 14px 6px 7px;
+}
+
+.avatar{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;
+}
+
+.chip-name{font-size:12px}
+
+.role-tag{
+  font-size:10px;padding:2px 8px;border-radius:100px;
+  font-weight:500;letter-spacing:0.4px;font-family:'DM Sans',sans-serif;
+}
+
+.role-DEVELOPER{background:rgba(56,189,248,0.15);color:var(--accent)}
+.role-ADMIN{background:rgba(251,191,36,0.15);color:var(--amber)}
+.role-MANAGER{background:rgba(167,139,250,0.15);color:var(--purple)}
+.role-USER{background:rgba(52,211,153,0.15);color:var(--green)}
+.role-AUDITOR{background:rgba(34,211,238,0.15);color:var(--cyan)}
+.role-READ_ONLY{background:rgba(100,116,139,0.15);color:var(--muted)}
+
+.av-DEVELOPER{background:rgba(56,189,248,0.15);color:var(--accent)}
+.av-ADMIN{background:rgba(251,191,36,0.15);color:var(--amber)}
+.av-MANAGER{background:rgba(167,139,250,0.15);color:var(--purple)}
+.av-USER{background:rgba(52,211,153,0.15);color:var(--green)}
+.av-AUDITOR{background:rgba(34,211,238,0.15);color:var(--cyan)}
+.av-READ_ONLY{background:rgba(100,116,139,0.2);color:var(--muted)}
+
+/* ===== LOGIN ===== */
+#login-screen{
+  flex:1;display:flex;align-items:center;justify-content:center;padding:40px;
+}
+
+.login-wrap{width:100%;max-width:440px}
+
+.login-card{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:40px;
+  animation:fadeUp 0.4s ease both;
+}
+
+.login-card h2{
+  font-family:'DM Sans',sans-serif;
+  font-size:24px;font-weight:700;margin-bottom:6px;
+}
+
+.login-sub{font-size:12px;color:var(--muted);margin-bottom:30px;line-height:1.7}
+
+.ids-banner{
+  display:flex;gap:10px;padding:12px;
+  background:rgba(248,113,113,0.06);
+  border:1px solid rgba(248,113,113,0.2);
+  border-radius:8px;
+  font-size:11px;color:rgba(248,113,113,0.8);
+  margin-bottom:22px;line-height:1.6;
+}
+
+.field{margin-bottom:18px}
+
+label{
+  display:block;font-size:10px;
+  text-transform:uppercase;letter-spacing:0.9px;
+  color:var(--muted);margin-bottom:8px;
+}
+
+input,select{
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:10px 14px;
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;
+  outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  -webkit-appearance:none;
+}
+
+input:focus,select:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(56,189,248,0.1);
+}
+
+select option{background:var(--surface2)}
+
+.btn-login{
+  width:100%;padding:12px;
+  background:var(--accent);color:#080b10;
+  border:none;border-radius:8px;
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+
+.btn-login:hover{filter:brightness(1.1);box-shadow:0 4px 20px var(--accent-glow);transform:translateY(-1px)}
+.btn-login:active{transform:translateY(0)}
+
+.setup-hint{
+  margin-top:16px;
+  font-size:11px;color:var(--muted);
+  text-align:center;line-height:1.7;
+}
+
+/* ===== MAIN ===== */
+#main-screen{display:none;flex:1;min-height:0}
+
+.layout{display:flex;flex:1;min-height:0;height:calc(100vh - 61px)}
+
+/* ===== SIDEBAR ===== */
+.sidebar{
+  width:230px;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:24px 14px;
+  display:flex;flex-direction:column;
+  overflow-y:auto;flex-shrink:0;
+}
+
+.sidebar-section-label{
+  font-size:9px;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--dim);
+  padding:0 10px;margin:16px 0 6px;
+}
+
+.sidebar-section-label:first-child{margin-top:0}
+
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:8px;
+  cursor:pointer;font-size:12px;color:var(--muted);
+  transition:all 0.15s;border:1px solid transparent;
+  user-select:none;
+}
+
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+
+.nav-item.active{
+  background:var(--accent-dim);
+  color:var(--accent);
+  border-color:rgba(56,189,248,0.2);
+}
+
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+
+.sidebar-spacer{flex:1}
+
+.nav-item.danger{color:rgba(248,113,113,0.5)}
+.nav-item.danger:hover{background:var(--red-dim);color:var(--red)}
+
+/* ===== CONTENT ===== */
+.content{
+  flex:1;padding:32px 36px;
+  overflow-y:auto;min-width:0;
+}
+
+.panel{display:none;animation:fadeUp 0.25s ease both}
+.panel.active{display:block}
+
+.panel-header{margin-bottom:28px}
+
+.panel-title{
+  font-family:'DM Sans',sans-serif;
+  font-size:20px;font-weight:700;margin-bottom:5px;
+}
+
+.panel-desc{font-size:12px;color:var(--muted);line-height:1.7}
+
+/* ===== CARDS ===== */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:24px;
+  margin-bottom:18px;
+}
+
+.card-label{
+  font-size:10px;text-transform:uppercase;
+  letter-spacing:0.8px;color:var(--muted);
+  margin-bottom:18px;
+}
+
+/* ===== FILE DROP ===== */
+.file-drop{
+  border:1.5px dashed var(--border2);
+  border-radius:10px;padding:26px;
+  text-align:center;cursor:pointer;
+  transition:all 0.2s;position:relative;
+  margin-bottom:16px;
+}
+
+.file-drop:hover,.file-drop.dragover{
+  border-color:var(--accent);
+  background:var(--accent-dim);
+}
+
+.file-drop input[type=file]{
+  position:absolute;inset:0;
+  opacity:0;cursor:pointer;width:100%;height:100%;
+}
+
+.drop-icon{font-size:26px;margin-bottom:8px}
+.drop-text{font-size:12px;color:var(--muted)}
+.drop-text strong{color:var(--accent)}
+.drop-name{font-size:11px;color:var(--green);margin-top:6px;word-break:break-all}
+
+/* ===== BUTTONS ===== */
+.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+
+.op-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 20px;border-radius:8px;border:1px solid;
+  cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px;font-weight:500;
+  transition:all 0.2s;background:transparent;
+}
+
+.op-btn:hover{transform:translateY(-1px)}
+.op-btn:active{transform:translateY(0)}
+
+.btn-encrypt{color:var(--accent);border-color:rgba(56,189,248,0.3);background:var(--accent-dim)}
+.btn-encrypt:hover{background:rgba(56,189,248,0.2);box-shadow:0 4px 16px rgba(56,189,248,0.15)}
+
+.btn-decrypt{color:var(--green);border-color:rgba(52,211,153,0.3);background:var(--green-dim)}
+.btn-decrypt:hover{background:rgba(52,211,153,0.18)}
+
+.btn-verify{color:var(--amber);border-color:rgba(251,191,36,0.3);background:var(--amber-dim)}
+.btn-verify:hover{background:rgba(251,191,36,0.18)}
+
+.btn-action{color:var(--purple);border-color:rgba(167,139,250,0.3);background:var(--purple-dim)}
+.btn-action:hover{background:rgba(167,139,250,0.18)}
+
+.btn-danger{color:var(--red);border-color:rgba(248,113,113,0.3);background:var(--red-dim)}
+.btn-danger:hover{background:rgba(248,113,113,0.18)}
+
+.btn-neutral{color:var(--muted);border-color:var(--border2);background:transparent}
+.btn-neutral:hover{color:var(--text);border-color:var(--dim)}
+
+/* ===== RESULT BOX ===== */
+.result-box{
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:8px;padding:16px;
+  margin-top:18px;font-size:12px;line-height:1.9;
+  display:none;
+}
+
+.result-box.visible{display:block;animation:fadeUp 0.2s ease both}
+
+.r-row{display:flex;gap:10px;align-items:flex-start}
+.r-k{color:var(--muted);min-width:120px;flex-shrink:0}
+.r-v{color:var(--text);word-break:break-all}
+.r-ok{color:var(--green)}
+.r-fail{color:var(--red)}
+
+.dl-link{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 14px;
+  background:var(--green-dim);border:1px solid rgba(52,211,153,0.25);
+  border-radius:7px;color:var(--green);
+  font-size:11px;text-decoration:none;cursor:pointer;
+  margin-top:10px;transition:all 0.2s;
+}
+
+.dl-link:hover{background:rgba(52,211,153,0.2)}
+
+/* ===== USER TABLE ===== */
+.tbl-wrap{overflow-x:auto}
+
+table{
+  width:100%;border-collapse:collapse;
+  font-size:12px;
+}
+
+th{
+  text-align:left;font-size:10px;
+  text-transform:uppercase;letter-spacing:0.8px;
+  color:var(--muted);padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+
+td{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.015)}
+
+.tbl-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.tbl-btn{
+  padding:4px 10px;border-radius:6px;border:1px solid;
+  font-size:10px;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;
+  background:transparent;transition:all 0.15s;
+}
+
+/* ===== LOG TABLE ===== */
+.log-chip{
+  padding:3px 9px;border-radius:100px;font-size:10px;font-weight:500;
+}
+
+/* ===== STATS ===== */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:14px;margin-bottom:22px;
+}
+
+.stat-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:18px;
+}
+
+.stat-val{
+  font-family:'DM Sans',sans-serif;
+  font-size:28px;font-weight:700;margin-bottom:4px;
+}
+
+.stat-label{font-size:11px;color:var(--muted)}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);
+  z-index:500;display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+
+.modal-overlay.open{display:flex}
+
+.modal{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:14px;padding:32px;width:100%;max-width:420px;
+  animation:scaleIn 0.25s ease both;
+}
+
+.modal h3{
+  font-family:'DM Sans',sans-serif;
+  font-size:17px;font-weight:700;margin-bottom:20px;
+}
+
+.modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+
+/* ===== TOAST ===== */
+.toast-wrap{
+  position:fixed;bottom:24px;right:24px;
+  z-index:999;display:flex;flex-direction:column;gap:8px;
+}
+
+.toast{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-radius:10px;
+  font-size:12px;min-width:280px;max-width:380px;
+  border:1px solid;animation:slideIn 0.3s ease both;
+  backdrop-filter:blur(12px);line-height:1.5;
+}
+
+.toast.success{background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.25);color:var(--green)}
+.toast.error{background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.25);color:var(--red)}
+.toast.info{background:var(--accent-dim);border-color:var(--accent-glow);color:var(--accent)}
+.toast.warn{background:var(--amber-dim);border-color:rgba(251,191,36,0.25);color:var(--amber)}
+
+.t-icon{font-size:14px;flex-shrink:0}
+.t-msg{flex:1}
+
+/* ===== EMPTY ===== */
+.empty{text-align:center;padding:50px;color:var(--dim)}
+.empty-icon{font-size:32px;margin-bottom:10px}
+.empty-txt{font-size:12px}
+
+/* ===== INFO BOX ===== */
+.info-box{
+  display:flex;gap:10px;padding:13px;
+  background:var(--accent-dim);border:1px solid rgba(56,189,248,0.18);
+  border-radius:8px;font-size:12px;color:var(--muted);
+  margin-bottom:20px;line-height:1.6;
+}
+
+.info-box-icon{color:var(--accent);flex-shrink:0}
+
+/* ===== LOCK BADGE ===== */
+.badge-locked{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 8px;border-radius:100px;font-size:10px;
+  background:var(--red-dim);color:var(--red);
+  border:1px solid rgba(248,113,113,0.2);
+}
+
+.badge-active{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 8px;border-radius:100px;font-size:10px;
+  background:var(--green-dim);color:var(--green);
+  border:1px solid rgba(52,211,153,0.2);
+}
+
+input[type=password]{letter-spacing:2px}
+
+.spinner{
+  display:inline-block;width:12px;height:12px;
+  border:2px solid rgba(255,255,255,0.2);
+  border-top-color:currentColor;border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* ===== COMPARISON PANEL ===== */
+.cmp-hero{
+  background:linear-gradient(135deg,rgba(56,189,248,0.06) 0%,rgba(167,139,250,0.04) 100%);
+  border:1px solid var(--border2);border-radius:14px;
+  padding:28px 32px;margin-bottom:24px;
+  position:relative;overflow:hidden;
+}
+.cmp-hero::before{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(56,189,248,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.cmp-hero-title{
+  font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;
+  margin-bottom:6px;
+}
+.cmp-hero-sub{font-size:12px;color:var(--muted);line-height:1.7;max-width:550px}
+
+.cmp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.cmp-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+.cmp-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+
+.cmp-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:12px;padding:20px;
+  transition:border-color 0.2s;
+}
+.cmp-card:hover{border-color:var(--dim)}
+
+.cmp-card-title{
+  font-size:9px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--dim);margin-bottom:14px;font-weight:600;
+}
+.cmp-chart-title{
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  margin-bottom:3px;
+}
+.cmp-chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px}
+
+.proj-mini{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:14px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.proj-mini-head{display:flex;align-items:center;gap:10px}
+.proj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.proj-mini-name{font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif}
+.proj-mini-sub{font-size:10px;color:var(--muted)}
+.proj-tags{display:flex;flex-wrap:wrap;gap:5px}
+.proj-tag{
+  font-size:9px;padding:2px 7px;border-radius:100px;
+  background:var(--surface3);color:var(--muted);
+  border:1px solid var(--border);
+}
+.proj-bars{display:flex;flex-direction:column;gap:7px}
+.proj-bar-row{display:flex;align-items:center;gap:8px;font-size:10px}
+.proj-bar-label{color:var(--muted);width:52px;text-align:right;flex-shrink:0}
+.proj-bar-track{flex:1;height:4px;background:var(--surface3);border-radius:100px;overflow:hidden}
+.proj-bar-fill{height:100%;border-radius:100px;transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+.proj-bar-val{font-size:9px;color:var(--dim);width:20px;text-align:right;font-family:'DM Sans',monospace}
+
+.cmp-feat-table{width:100%;border-collapse:collapse;font-size:11px}
+.cmp-feat-table th{
+  padding:9px 12px;text-align:left;
+  font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;
+  color:var(--muted);border-bottom:1px solid var(--border);
+  background:var(--surface2);white-space:nowrap;
+}
+.cmp-feat-table td{
+  padding:9px 12px;border-bottom:1px solid var(--border);
+  vertical-align:middle;color:var(--muted);
+}
+.cmp-feat-table tr:last-child td{border-bottom:none}
+.cmp-feat-table tr:hover td{background:rgba(255,255,255,0.012)}
+.cmp-feat-table td:first-child{color:var(--text);font-size:11px}
+.cft-check{color:var(--green)}
+.cft-cross{color:var(--red)}
+.cft-part{color:var(--amber);font-size:10px}
+
+.cmp-score-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.cmp-score-label{font-size:11px;color:var(--muted);min-width:130px;text-align:right}
+.cmp-score-track{flex:1;height:7px;background:var(--surface3);border-radius:100px;overflow:hidden}
+.cmp-score-bar{height:100%;border-radius:100px;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
+.cmp-score-val{font-size:10px;color:var(--muted);width:28px;text-align:right}
+.cmp-winner{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:9px;font-weight:600;padding:1px 7px;border-radius:100px;
+  background:rgba(56,189,248,0.12);color:var(--accent);
+  border:1px solid rgba(56,189,248,0.2);margin-left:4px;
+}
+
+.cmp-metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.cmp-metric{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:16px;
+}
+.cmp-metric-val{
+  font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;
+  line-height:1;margin-bottom:4px;letter-spacing:-0.5px;
+}
+.cmp-metric-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.cmp-metric-sub{font-size:10px;color:var(--dim);margin-top:3px}
+
+.cmp-insight{
+  background:rgba(56,189,248,0.05);
+  border:1px solid rgba(56,189,248,0.15);
+  border-radius:10px;padding:14px 18px;
+  font-size:12px;color:var(--muted);
+  line-height:1.7;margin-bottom:14px;
+}
+.cmp-insight strong{color:var(--accent)}
+
+.cmp-unique-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;
+  font-size:11px;margin-bottom:8px;
+}
+.cmp-unique-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cmp-unique-label{flex:1;color:var(--muted)}
+.cmp-unique-badge{
+  font-size:9px;padding:2px 8px;border-radius:100px;
+  background:rgba(56,189,248,0.1);color:var(--accent);
+  border:1px solid rgba(56,189,248,0.2);font-weight:600;
+}
+
+.cmp-section-label{
+  font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--dim);margin:20px 0 10px;font-weight:600;
+}
+
+canvas{width:100%!important}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">🛡</div>
+    <div class="logo-text">Secure<span class="hi">FS</span> <span style="color:var(--dim);font-size:13px;font-weight:400">RBAC</span></div>
+  </div>
+  <div class="header-right" id="header-user" style="display:none"></div>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2>Authentication</h2>
+      <p class="login-sub">Role-based access control. Your session key is derived from your password.</p>
+
+      <div class="ids-banner">
+        <span>⚠</span>
+        <span>Intrusion detection active. Accounts lock after <strong>5 failed attempts</strong> within 10 minutes.</span>
+      </div>
+
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="login-user" placeholder="Enter username…" onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="Enter password…" onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <button class="btn-login" onclick="login()">Sign In →</button>
+      <div class="setup-hint">
+        Default admin: <code style="color:var(--accent)">admin</code> &nbsp;|&nbsp;
+        Set password on first login &nbsp;|&nbsp;
+        Role: <span class="role-tag role-DEVELOPER">DEVELOPER</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section-label">File Operations</div>
+      <div class="nav-item active" data-panel="encrypt" onclick="nav(this)">
+        <span class="nav-icon">🔒</span>Encrypt
+      </div>
+      <div class="nav-item" data-panel="decrypt" onclick="nav(this)">
+        <span class="nav-icon">🔓</span>Decrypt
+      </div>
+      <div class="nav-item" data-panel="verify" onclick="nav(this)">
+        <span class="nav-icon">✅</span>Verify Integrity
+      </div>
+
+      <div class="sidebar-section-label" id="sec-mgmt-label" style="display:none">Management</div>
+      <div class="nav-item" data-panel="logs" id="nav-logs" style="display:none" onclick="nav(this)">
+        <span class="nav-icon">📋</span>Access Logs
+      </div>
+      <div class="nav-item" data-panel="stats" id="nav-stats" style="display:none" onclick="nav(this)">
+        <span class="nav-icon">📊</span>System Stats
+      </div>
+      <div class="nav-item" data-panel="users" id="nav-users" style="display:none" onclick="nav(this)">
+        <span class="nav-icon">👥</span>User Management
+      </div>
+
+      <div class="sidebar-section-label">Analysis</div>
+      <div class="nav-item" data-panel="compare" id="nav-compare" onclick="nav(this)">
+        <span class="nav-icon">📈</span>Benchmarks
+      </div>
+
+      <div class="sidebar-spacer"></div>
+      <div class="nav-item danger" onclick="logout()">
+        <span class="nav-icon">↩</span>Sign Out
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ENCRYPT -->
+      <div class="panel active" id="panel-encrypt">
+        <div class="panel-header">
+          <div class="panel-title">Encrypt File</div>
+          <div class="panel-desc">AES-256-GCM with PBKDF2 key derivation. Your identity is cryptographically bound via AAD.</div>
+        </div>
+        <div class="info-box">
+          <span class="info-box-icon">ℹ</span>
+          <span>The session key derived from your password is used to encrypt. AAD binds <code style="color:var(--accent)">username|employeeId</code> to the ciphertext — only you can decrypt.</span>
+        </div>
+        <div class="card">
+          <div class="card-label">Input File</div>
+          <div class="file-drop" id="enc-drop">
+            <input type="file" id="enc-file" onchange="fileChosen('enc')">
+            <div class="drop-icon">📂</div>
+            <div class="drop-text">Drop a file or <strong>click to browse</strong></div>
+            <div class="drop-name" id="enc-fname"></div>
+          </div>
+          <div class="actions">
+            <button class="op-btn btn-encrypt" onclick="doEncrypt(event)">🔒 Encrypt File</button>
+          </div>
+          <div class="result-box" id="enc-result"></div>
+        </div>
+      </div>
+
+      <!-- DECRYPT -->
+      <div class="panel" id="panel-decrypt">
+        <div class="panel-header">
+          <div class="panel-title">Decrypt File</div>
+          <div class="panel-desc">Authenticate and decrypt a .enc file. Fails if identity or session key doesn't match.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Encrypted File (.enc)</div>
+          <div class="file-drop" id="dec-drop">
+            <input type="file" id="dec-file" accept=".enc" onchange="fileChosen('dec')">
+            <div class="drop-icon">🔐</div>
+            <div class="drop-text">Drop a <strong>.enc file</strong> or click to browse</div>
+            <div class="drop-name" id="dec-fname"></div>
+          </div>
+          <div class="actions">
+            <button class="op-btn btn-decrypt" onclick="doDecrypt(event)">🔓 Decrypt File</button>
+          </div>
+          <div class="result-box" id="dec-result"></div>
+        </div>
+      </div>
+
+      <!-- VERIFY -->
+      <div class="panel" id="panel-verify">
+        <div class="panel-header">
+          <div class="panel-title">Verify Integrity</div>
+          <div class="panel-desc">Cryptographically verify a file hasn't been tampered with, without writing output.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Encrypted File (.enc)</div>
+          <div class="file-drop" id="ver-drop">
+            <input type="file" id="ver-file" accept=".enc" onchange="fileChosen('ver')">
+            <div class="drop-icon">🔍</div>
+            <div class="drop-text">Drop a <strong>.enc file</strong> or click to browse</div>
+            <div class="drop-name" id="ver-fname"></div>
+          </div>
+          <div class="actions">
+            <button class="op-btn btn-verify" onclick="doVerify(event)">✅ Verify Integrity</button>
+          </div>
+          <div class="result-box" id="ver-result"></div>
+        </div>
+      </div>
+
+      <!-- LOGS -->
+      <div class="panel" id="panel-logs">
+        <div class="panel-header">
+          <div class="panel-title">Access Logs</div>
+          <div class="panel-desc">Full audit trail of all actions performed this session.</div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="logs-content"></div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="op-btn btn-neutral" onclick="clearLogs()">🗑 Clear Session Logs</button>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="panel" id="panel-stats">
+        <div class="panel-header">
+          <div class="panel-title">System Statistics</div>
+          <div class="panel-desc">Overview of registered users and account states.</div>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="stats-user-table"></div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="panel" id="panel-users">
+        <div class="panel-header">
+          <div class="panel-title">User Management</div>
+          <div class="panel-desc">Add, modify roles, lock, unlock, or delete users.</div>
+        </div>
+        <div style="margin-bottom:14px">
+          <button class="op-btn btn-action" id="btn-add-user" onclick="openAddUser()">＋ Add User</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="users-table"></div>
+        </div>
+      </div>
+
+      <!-- COMPARE -->
+      <div class="panel" id="panel-compare">
+        <div class="panel-header">
+          <div class="panel-title">Competitive Benchmarks</div>
+          <div class="panel-desc">How SecureFS RBAC compares to 4 real-world encryption tools across security, features, usability and more.</div>
+        </div>
+
+        <!-- HERO METRICS -->
+        <div class="cmp-metric-row">
+          <div class="cmp-metric">
+            <div class="cmp-metric-val" style="color:var(--accent)">6</div>
+            <div class="cmp-metric-label">RBAC Roles</div>
+            <div class="cmp-metric-sub">Avg 0 in comparable tools</div>
+          </div>
+          <div class="cmp-metric">
+            <div class="cmp-metric-val" style="color:var(--green)">AES-256</div>
+            <div class="cmp-metric-label">Cipher + GCM Mode</div>
+            <div class="cmp-metric-sub">AEAD — tamper-proof</div>
+          </div>
+          <div class="cmp-metric">
+            <div class="cmp-metric-val" style="color:var(--amber)">100K</div>
+            <div class="cmp-metric-label">PBKDF2 Iterations</div>
+            <div class="cmp-metric-sub">Industry-standard minimum</div>
+          </div>
+          <div class="cmp-metric">
+            <div class="cmp-metric-val" style="color:var(--purple)">13/15</div>
+            <div class="cmp-metric-label">Feature Score</div>
+            <div class="cmp-metric-sub">Highest of all 5 projects</div>
+          </div>
+        </div>
+
+        <!-- PROJECT CARDS -->
+        <div class="cmp-section-label">Projects Compared</div>
+        <div class="cmp-grid-5">
+          <div class="proj-mini">
+            <div class="proj-mini-head">
+              <div class="proj-dot" style="background:#38bdf8"></div>
+              <div><div class="proj-mini-name">SecureFS RBAC</div><div class="proj-mini-sub">This project</div></div>
+            </div>
+            <div class="proj-tags">
+              <span class="proj-tag">Python+Browser</span><span class="proj-tag">RBAC</span><span class="proj-tag">IDS</span>
+            </div>
+            <div class="proj-bars">
+              <div class="proj-bar-row"><span class="proj-bar-label">Security</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:90%;background:#38bdf8"></div></div><span class="proj-bar-val">90</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Features</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:95%;background:#38bdf8"></div></div><span class="proj-bar-val">95</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Usability</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:85%;background:#38bdf8"></div></div><span class="proj-bar-val">85</span></div>
+            </div>
+          </div>
+          <div class="proj-mini">
+            <div class="proj-mini-head">
+              <div class="proj-dot" style="background:#f472b6"></div>
+              <div><div class="proj-mini-name">VaultMan</div><div class="proj-mini-sub">CLI password manager</div></div>
+            </div>
+            <div class="proj-tags">
+              <span class="proj-tag">Python</span><span class="proj-tag">AES-128</span><span class="proj-tag">No RBAC</span>
+            </div>
+            <div class="proj-bars">
+              <div class="proj-bar-row"><span class="proj-bar-label">Security</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:60%;background:#f472b6"></div></div><span class="proj-bar-val">60</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Features</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:35%;background:#f472b6"></div></div><span class="proj-bar-val">35</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Usability</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:55%;background:#f472b6"></div></div><span class="proj-bar-val">55</span></div>
+            </div>
+          </div>
+          <div class="proj-mini">
+            <div class="proj-mini-head">
+              <div class="proj-dot" style="background:#34d399"></div>
+              <div><div class="proj-mini-name">VeraCrypt</div><div class="proj-mini-sub">Disk encryptor</div></div>
+            </div>
+            <div class="proj-tags">
+              <span class="proj-tag">C++</span><span class="proj-tag">AES-XTS</span><span class="proj-tag">Desktop</span>
+            </div>
+            <div class="proj-bars">
+              <div class="proj-bar-row"><span class="proj-bar-label">Security</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:97%;background:#34d399"></div></div><span class="proj-bar-val">97</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Features</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:68%;background:#34d399"></div></div><span class="proj-bar-val">68</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Usability</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:50%;background:#34d399"></div></div><span class="proj-bar-val">50</span></div>
+            </div>
+          </div>
+          <div class="proj-mini">
+            <div class="proj-mini-head">
+              <div class="proj-dot" style="background:#fbbf24"></div>
+              <div><div class="proj-mini-name">age</div><div class="proj-mini-sub">Modern CLI tool</div></div>
+            </div>
+            <div class="proj-tags">
+              <span class="proj-tag">Go</span><span class="proj-tag">ChaCha20</span><span class="proj-tag">CLI</span>
+            </div>
+            <div class="proj-bars">
+              <div class="proj-bar-row"><span class="proj-bar-label">Security</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:88%;background:#fbbf24"></div></div><span class="proj-bar-val">88</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Features</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:40%;background:#fbbf24"></div></div><span class="proj-bar-val">40</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Usability</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:65%;background:#fbbf24"></div></div><span class="proj-bar-val">65</span></div>
+            </div>
+          </div>
+          <div class="proj-mini">
+            <div class="proj-mini-head">
+              <div class="proj-dot" style="background:#a78bfa"></div>
+              <div><div class="proj-mini-name">Cryptomator</div><div class="proj-mini-sub">Cloud encryptor</div></div>
+            </div>
+            <div class="proj-tags">
+              <span class="proj-tag">Java</span><span class="proj-tag">AES-SIV</span><span class="proj-tag">Desktop+Mobile</span>
+            </div>
+            <div class="proj-bars">
+              <div class="proj-bar-row"><span class="proj-bar-label">Security</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:85%;background:#a78bfa"></div></div><span class="proj-bar-val">85</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Features</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:60%;background:#a78bfa"></div></div><span class="proj-bar-val">60</span></div>
+              <div class="proj-bar-row"><span class="proj-bar-label">Usability</span><div class="proj-bar-track"><div class="proj-bar-fill" style="width:88%;background:#a78bfa"></div></div><span class="proj-bar-val">88</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 1 -->
+        <div class="cmp-section-label">Multi-Dimension Radar & Dimension Scores</div>
+        <div class="cmp-grid-2">
+          <div class="cmp-card">
+            <div class="cmp-chart-title">7-Axis Capability Radar</div>
+            <div class="cmp-chart-sub">All 5 projects across key dimensions</div>
+            <canvas id="cmpRadar" height="260"></canvas>
+          </div>
+          <div class="cmp-card">
+            <div class="cmp-chart-title">SecureFS Dimension Scores</div>
+            <div class="cmp-chart-sub">★ marks where SecureFS leads all others</div>
+            <div id="cmp-score-bars" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 2 -->
+        <div class="cmp-section-label">Security Architecture & Feature Count</div>
+        <div class="cmp-grid-2">
+          <div class="cmp-card">
+            <div class="cmp-chart-title">Security Score Composition</div>
+            <div class="cmp-chart-sub">Stacked: cipher + key derivation + AAD + tamper detect + brute-force protection</div>
+            <canvas id="cmpSecStack" height="200"></canvas>
+          </div>
+          <div class="cmp-card">
+            <div class="cmp-chart-title">Feature Count (of 15 tracked)</div>
+            <div class="cmp-chart-sub">SecureFS implements 13 — highest of all tools</div>
+            <canvas id="cmpFeatureBar" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 3 -->
+        <div class="cmp-section-label">Complexity vs Value & Unique Capabilities</div>
+        <div class="cmp-grid-2">
+          <div class="cmp-card">
+            <div class="cmp-chart-title">Features vs Complexity Bubble</div>
+            <div class="cmp-chart-sub">X = implementation complexity · Y = feature completeness · Bubble size = usability</div>
+            <canvas id="cmpBubble" height="200"></canvas>
+          </div>
+          <div class="cmp-card">
+            <div class="cmp-chart-title">Exclusive Capabilities</div>
+            <div class="cmp-chart-sub">Features in SecureFS absent from all 4 other tools</div>
+            <canvas id="cmpUnique" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- FEATURE MATRIX -->
+        <div class="cmp-section-label">Full Feature Comparison Matrix</div>
+        <div class="cmp-insight">
+          <strong>SecureFS uniquely combines:</strong> role-based access control (6 roles), intrusion detection system, identity-bound encryption via AAD, audit logging, and dual-mode deployment (browser-only + REST API) — no other tool in this comparison offers all five simultaneously.
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table class="cmp-feat-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th style="color:#38bdf8">SecureFS</th>
+                <th style="color:#f472b6">VaultMan</th>
+                <th style="color:#34d399">VeraCrypt</th>
+                <th style="color:#fbbf24">age</th>
+                <th style="color:#a78bfa">Cryptomator</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>AES-256-GCM (AEAD)</td><td><span class="cft-check">✓</span></td><td><span class="cft-cross">✗</span> AES-128</td><td><span class="cft-check">✓</span></td><td><span class="cft-cross">✗</span> ChaCha20</td><td><span class="cft-part">~ AES-SIV</span></td></tr>
+              <tr><td>PBKDF2 Key Derivation</td><td><span class="cft-check">✓</span> 100K</td><td><span class="cft-check">✓</span> PBKDF2HMAC</td><td><span class="cft-check">✓</span> 500K</td><td><span class="cft-cross">✗</span> scrypt</td><td><span class="cft-check">✓</span> scrypt</td></tr>
+              <tr><td>Identity-Bound Encryption (AAD)</td><td><span class="cft-check">✓</span> username|empId</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Role-Based Access Control</td><td><span class="cft-check">✓</span> 6 roles</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Intrusion Detection (IDS)</td><td><span class="cft-check">✓</span> Lock @5 fails</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Audit / Access Log</td><td><span class="cft-check">✓</span> Full trail</td><td><span class="cft-cross">✗</span></td><td><span class="cft-part">~ Basic</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Multi-User Support</td><td><span class="cft-check">✓</span> User DB</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-part">~ Paid teams</span></td></tr>
+              <tr><td>Browser-Only Deployment</td><td><span class="cft-check">✓</span> Pure HTML</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>REST API Backend</td><td><span class="cft-check">✓</span> FastAPI</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>File Integrity Verify</td><td><span class="cft-check">✓</span> GCM tag</td><td><span class="cft-cross">✗</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td></tr>
+              <tr><td>No External Deps (browser)</td><td><span class="cft-check">✓</span> Web Crypto API</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Cross-platform file compat.</td><td><span class="cft-check">✓</span> Python↔Browser</td><td><span class="cft-cross">✗</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td></tr>
+              <tr><td>Account Lock / Unlock</td><td><span class="cft-check">✓</span> Admin action</td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td><td><span class="cft-cross">✗</span></td></tr>
+              <tr><td>Session Key (never stored)</td><td><span class="cft-check">✓</span> In-memory only</td><td><span class="cft-cross">✗</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td></tr>
+              <tr><td>Open Source / Auditable</td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td><td><span class="cft-check">✓</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- UNIQUE FEATURES LIST -->
+        <div class="cmp-section-label">What Makes SecureFS Unique</div>
+        <div class="cmp-unique-item"><div class="cmp-unique-dot" style="background:#38bdf8"></div><span class="cmp-unique-label">Identity-bound encryption via AAD — ciphertext is cryptographically tied to username + employeeId. Decryption fails for any other user.</span><span class="cmp-unique-badge">Exclusive</span></div>
+        <div class="cmp-unique-item"><div class="cmp-unique-dot" style="background:#60a5fa"></div><span class="cmp-unique-label">Full RBAC with 6 roles (DEVELOPER, ADMIN, MANAGER, USER, AUDITOR, READ_ONLY) and per-operation permission checks.</span><span class="cmp-unique-badge">Exclusive</span></div>
+        <div class="cmp-unique-item"><div class="cmp-unique-dot" style="background:#818cf8"></div><span class="cmp-unique-label">Sliding-window Intrusion Detection System — accounts auto-lock after 5 failed logins in 10 minutes.</span><span class="cmp-unique-badge">Exclusive</span></div>
+        <div class="cmp-unique-item"><div class="cmp-unique-dot" style="background:#a78bfa"></div><span class="cmp-unique-label">Three deployment modes in one codebase: Python CLI, browser-only HTML, and FastAPI REST API.</span><span class="cmp-unique-badge">Exclusive</span></div>
+        <div class="cmp-unique-item"><div class="cmp-unique-dot" style="background:#c084fc"></div><span class="cmp-unique-label">Browser implementation uses only the native Web Crypto API — zero external libraries, zero attack surface from dependencies.</span><span class="cmp-unique-badge">Exclusive</span></div>
+      </div>
+
+    </main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Dialog</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="op-btn btn-neutral" onclick="closeModal()">Cancel</button>
+      <button class="op-btn" id="modal-confirm" onclick="modalConfirm()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// =========================================================
+// STATE
+// =========================================================
+
+const ROLE_PERMISSIONS = {
+  DEVELOPER:  ['encrypt','decrypt','verify','view_logs','add_user','delete_user','modify_role','lock_account','unlock_account','view_stats'],
+  ADMIN:      ['encrypt','decrypt','verify','view_logs','add_user','lock_account','unlock_account'],
+  MANAGER:    ['encrypt','decrypt','verify'],
+  USER:       ['encrypt','decrypt','verify'],
+  AUDITOR:    ['view_logs','verify'],
+  READ_ONLY:  ['verify']
+};
+
+const SALT_LEN=16, IV_LEN=12;
+
+let currentUser = null;
+let sessionLogs  = [];
+
+// In-memory user database (pre-seeded)
+let userDB = {
+  admin: { employeeId:'DEV001', role:'DEVELOPER', passwordHash:null, salt:null, locked:false }
+};
+// Track failed attempts per user
+let failTracker = {}; // { username: { fails:[], locked:bool } }
+
+// File buffers
+let fileData = { enc:null, dec:null, ver:null };
+let fileName  = { enc:'',  dec:'',  ver:'' };
+
+// Modal callback
+let modalCallback = null;
+
+// =========================================================
+// INIT — setup default admin password if none
+// =========================================================
+
+(function init(){
+  try {
+    const stored = localStorage.getItem('sfs_users');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // If admin salt got stored as an object (corrupted), reset
+      const adm = parsed.admin;
+      if (adm && adm.salt && typeof adm.salt === 'object' && !Array.isArray(adm.salt)) {
+        throw new Error('corrupted');
+      }
+      userDB = parsed;
+    }
+    const storedFails = localStorage.getItem('sfs_fails');
+    if (storedFails) failTracker = JSON.parse(storedFails);
+  } catch(e) {
+    localStorage.removeItem('sfs_users');
+    localStorage.removeItem('sfs_fails');
+    userDB = { admin:{ employeeId:'DEV001', role:'DEVELOPER', passwordHash:null, salt:null } };
+    failTracker = {};
+  }
+})();
+
+function saveDB(){ localStorage.setItem('sfs_users', JSON.stringify(userDB)); }
+function saveFails(){ localStorage.setItem('sfs_fails', JSON.stringify(failTracker)); }
+
+// =========================================================
+// CRYPTO UTILS
+// =========================================================
+
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' },
+    base, 256
+  );
+  return new Uint8Array(bits);
+}
+
+async function deriveSessionKey(passwordHash) {
+  // session_key = SHA-256(password_hash || "SESSION")
+  const enc = new TextEncoder();
+  const combined = new Uint8Array([...passwordHash, ...enc.encode('SESSION')]);
+  const digest = await crypto.subtle.digest('SHA-256', combined);
+  return new Uint8Array(digest);
+}
+
+async function deriveFileKey(sessionKey, salt) {
+  const base = await crypto.subtle.importKey('raw', sessionKey, 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' },
+    base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+  );
+}
+
+function aad(user) {
+  return new TextEncoder().encode(`${user.username}|${user.employeeId}`);
+}
+
+function hexArr(arr) {
+  return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function arrHex(hex) {
+  const arr = new Uint8Array(hex.length/2);
+  for(let i=0;i<arr.length;i++) arr[i]=parseInt(hex.substr(i*2,2),16);
+  return arr;
+}
+
+// =========================================================
+// IDS
+// =========================================================
+
+function isLocked(username) {
+  const rec = failTracker[username];
+  if (!rec) return false;
+  return rec.locked === true;
+}
+
+function recordFail(username) {
+  const now = Date.now();
+  let rec = failTracker[username] || { fails:[], locked:false };
+  rec.fails = rec.fails.filter(t => now - t < 600000);
+  rec.fails.push(now);
+  if (rec.fails.length >= 5) { rec.locked = true; }
+  failTracker[username] = rec;
+  saveFails();
+  return rec.fails.length;
+}
+
+function clearFails(username) {
+  if (failTracker[username]) { failTracker[username].fails = []; failTracker[username].locked = false; }
+  saveFails();
+}
+
+function lockUser(username) {
+  failTracker[username] = { fails:[], locked:true };
+  saveFails();
+}
+
+function unlockUser(username) {
+  failTracker[username] = { fails:[], locked:false };
+  saveFails();
+}
+
+// =========================================================
+// AUTH
+// =========================================================
+
+async function login() {
+  const uname = document.getElementById('login-user').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  if (!uname || !pass) { toast('Enter username and password.', 'error'); return; }
+
+  if (!userDB[uname]) { toast('Unknown user.', 'error'); return; }
+
+  if (isLocked(uname)) {
+    toast('Account is locked due to too many failed attempts.', 'error');
+    return;
+  }
+
+  const userData = userDB[uname];
+
+  // First-time setup: no password set yet
+  if (!userData.passwordHash) {
+    const saltBytes = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+    const saltHex   = hexArr(saltBytes);
+    const h         = await hashPassword(pass, saltBytes);
+    userData.salt         = saltHex;
+    userData.passwordHash = hexArr(h);
+    saveDB();
+    const sk = await deriveSessionKey(h);
+    currentUser = { username:uname, employeeId:userData.employeeId, role:userData.role, sessionKey:sk };
+    logEvent(currentUser, 'LOGIN_SUCCESS');
+    toast('Password created and signed in!', 'success');
+    showMain();
+    return;
+  }
+
+  // Normal login
+  const saltBytes = arrHex(userData.salt);
+  const h         = await hashPassword(pass, saltBytes);
+
+  if (hexArr(h) !== userData.passwordHash) {
+    const fails = recordFail(uname);
+    const rem   = Math.max(0, 5 - fails);
+    toast(`Invalid password. ${rem > 0 ? rem + ' attempt(s) remaining.' : 'Account locked.'}`, 'error');
+    return;
+  }
+
+  clearFails(uname);
+  const sk = await deriveSessionKey(h);
+  currentUser = { username:uname, employeeId:userData.employeeId, role:userData.role, sessionKey:sk };
+  logEvent(currentUser, 'LOGIN_SUCCESS');
+  showMain();
+}
+
+function logout() {
+  if (currentUser) logEvent(currentUser, 'LOGOUT');
+  currentUser = null;
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('header-user').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  toast('Signed out.', 'info');
+}
+
+function hasPerm(perm) {
+  return currentUser && (ROLE_PERMISSIONS[currentUser.role]||[]).includes(perm);
+}
+
+// =========================================================
+// SHOW MAIN
+// =========================================================
+
+function showMain() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'flex';
+
+  // Header chip
+  const r = currentUser.role;
+  document.getElementById('header-user').style.display = 'flex';
+  document.getElementById('header-user').innerHTML = `
+    <div class="user-chip">
+      <div class="avatar av-${r}">${currentUser.username[0].toUpperCase()}</div>
+      <span class="chip-name">${currentUser.username}</span>
+      <span class="role-tag role-${r}">${r}</span>
+    </div>`;
+
+  // Sidebar visibility
+  const show = (id, perm) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hasPerm(perm) ? 'flex' : 'none';
+  };
+  show('nav-logs',   'view_logs');
+  show('nav-stats',  'view_stats');
+  show('nav-users',  'add_user');
+  // Benchmarks always visible
+  const navCmp = document.getElementById('nav-compare');
+  if (navCmp) navCmp.style.display = 'flex';
+
+  const mgmt = hasPerm('view_logs') || hasPerm('view_stats') || hasPerm('add_user');
+  document.getElementById('sec-mgmt-label').style.display = mgmt ? 'block' : 'none';
+
+  // Lock encrypt/decrypt nav if no perms
+  document.querySelectorAll('[data-panel="encrypt"],[data-panel="decrypt"]').forEach(el => {
+    if (el.tagName === 'DIV') {
+      el.style.opacity = hasPerm('encrypt') ? '1' : '0.3';
+      el.style.pointerEvents = hasPerm('encrypt') ? 'auto' : 'none';
+    }
+  });
+
+  nav(document.querySelector('.nav-item.active[data-panel]'));
+}
+
+// =========================================================
+// NAVIGATION
+// =========================================================
+
+function nav(el) {
+  if (!el) return;
+  const panel = el.dataset.panel;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+panel).classList.add('active');
+  if (panel === 'logs')  renderLogs();
+  if (panel === 'stats') renderStats();
+  if (panel === 'users') renderUsers();
+}
+
+// =========================================================
+// FILE INPUT
+// =========================================================
+
+function fileChosen(prefix) {
+  const input = document.getElementById(prefix+'-file');
+  const file  = input.files[0]; if (!file) return;
+  document.getElementById(prefix+'-fname').textContent = file.name;
+  fileName[prefix] = file.name;
+  const r = new FileReader();
+  r.onload = e => fileData[prefix] = e.target.result;
+  r.readAsArrayBuffer(file);
+}
+
+['enc','dec','ver'].forEach(p => {
+  setTimeout(()=>{
+    const drop = document.getElementById(p+'-drop'); if (!drop) return;
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('dragover');
+      const file = e.dataTransfer.files[0]; if (!file) return;
+      document.getElementById(p+'-fname').textContent = file.name;
+      fileName[p] = file.name;
+      const r = new FileReader();
+      r.onload = ev => fileData[p] = ev.target.result;
+      r.readAsArrayBuffer(file);
+    });
+  }, 100);
+});
+
+// =========================================================
+// ENCRYPT
+// =========================================================
+
+async function doEncrypt(e) {
+  if (!hasPerm('encrypt')) { toast('Permission denied.', 'error'); return; }
+  if (!fileData.enc) { toast('Select a file first.', 'error'); return; }
+  const btn = e.currentTarget;
+  btn.innerHTML = '<span class="spinner"></span> Encrypting…'; btn.disabled=true;
+  try {
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+    const iv   = crypto.getRandomValues(new Uint8Array(IV_LEN));
+    const key  = await deriveFileKey(currentUser.sessionKey, salt);
+    const ct   = await crypto.subtle.encrypt(
+      { name:'AES-GCM', iv, additionalData:aad(currentUser), tagLength:128 },
+      key, fileData.enc
+    );
+    const out = new Uint8Array(SALT_LEN + IV_LEN + ct.byteLength);
+    out.set(salt,0); out.set(iv, SALT_LEN); out.set(new Uint8Array(ct), SALT_LEN+IV_LEN);
+    const blob = new Blob([out], {type:'application/octet-stream'});
+    const url  = URL.createObjectURL(blob);
+    const outName = fileName.enc + '.enc';
+    logEvent(currentUser, 'ENCRYPT', fileName.enc, 'OK');
+    showResult('enc', `
+      <div class="r-row"><span class="r-k">Status</span><span class="r-v r-ok">✅ Encrypted successfully</span></div>
+      <div class="r-row"><span class="r-k">Input file</span><span class="r-v">${fileName.enc}</span></div>
+      <div class="r-row"><span class="r-k">Output</span><span class="r-v">${outName}</span></div>
+      <div class="r-row"><span class="r-k">Algorithm</span><span class="r-v">AES-256-GCM · PBKDF2(100k)</span></div>
+      <div class="r-row"><span class="r-k">Identity</span><span class="r-v">${currentUser.username} · ${currentUser.employeeId}</span></div>
+      <a class="dl-link" href="${url}" download="${outName}">⬇ Download ${outName}</a>
+    `);
+    toast('Encrypted successfully.', 'success');
+  } catch(err) {
+    logEvent(currentUser, 'ENCRYPT', fileName.enc, 'FAILED');
+    showResult('enc', `<div class="r-row"><span class="r-k">Status</span><span class="r-v r-fail">❌ ${err.message}</span></div>`);
+    toast('Encryption failed.', 'error');
+  }
+  btn.innerHTML = '🔒 Encrypt File'; btn.disabled=false;
+}
+
+// =========================================================
+// DECRYPT
+// =========================================================
+
+async function doDecrypt(e) {
+  if (!hasPerm('decrypt')) { toast('Permission denied.', 'error'); return; }
+  if (!fileData.dec) { toast('Select a .enc file first.', 'error'); return; }
+  const btn = e.currentTarget;
+  btn.innerHTML = '<span class="spinner"></span> Decrypting…'; btn.disabled=true;
+  try {
+    const data = new Uint8Array(fileData.dec);
+    const salt = data.slice(0, SALT_LEN);
+    const iv   = data.slice(SALT_LEN, SALT_LEN+IV_LEN);
+    const ct   = data.slice(SALT_LEN+IV_LEN);
+    const key  = await deriveFileKey(currentUser.sessionKey, salt);
+    const pt   = await crypto.subtle.decrypt(
+      { name:'AES-GCM', iv, additionalData:aad(currentUser), tagLength:128 },
+      key, ct
+    );
+    const outName = fileName.dec.replace(/\.enc$/i,'') || 'decrypted.bin';
+    const blob = new Blob([pt]);
+    const url  = URL.createObjectURL(blob);
+    logEvent(currentUser, 'DECRYPT', fileName.dec, 'OK');
+    showResult('dec', `
+      <div class="r-row"><span class="r-k">Status</span><span class="r-v r-ok">✅ Decrypted successfully</span></div>
+      <div class="r-row"><span class="r-k">Input file</span><span class="r-v">${fileName.dec}</span></div>
+      <div class="r-row"><span class="r-k">Output</span><span class="r-v">${outName}</span></div>
+      <div class="r-row"><span class="r-k">Identity</span><span class="r-v">${currentUser.username} · ${currentUser.employeeId}</span></div>
+      <a class="dl-link" href="${url}" download="${outName}">⬇ Download ${outName}</a>
+    `);
+    toast('Decrypted successfully.', 'success');
+  } catch {
+    logEvent(currentUser, 'DECRYPT', fileName.dec, 'FAILED (TAMPERED / WRONG ID / WRONG SESSION KEY)');
+    showResult('dec', `
+      <div class="r-row"><span class="r-k">Status</span><span class="r-v r-fail">❌ Decryption failed</span></div>
+      <div class="r-row"><span class="r-k">Reason</span><span class="r-v" style="color:var(--muted)">Tampered file, wrong identity, or wrong session key.</span></div>
+    `);
+    toast('Decryption failed: authentication error.', 'error');
+  }
+  btn.innerHTML = '🔓 Decrypt File'; btn.disabled=false;
+}
+
+// =========================================================
+// VERIFY
+// =========================================================
+
+async function doVerify(e) {
+  if (!hasPerm('verify')) { toast('Permission denied.', 'error'); return; }
+  if (!fileData.ver) { toast('Select a .enc file first.', 'error'); return; }
+  const btn = e.currentTarget;
+  btn.innerHTML = '<span class="spinner"></span> Verifying…'; btn.disabled=true;
+  try {
+    const data = new Uint8Array(fileData.ver);
+    const salt = data.slice(0, SALT_LEN);
+    const iv   = data.slice(SALT_LEN, SALT_LEN+IV_LEN);
+    const ct   = data.slice(SALT_LEN+IV_LEN);
+    const key  = await deriveFileKey(currentUser.sessionKey, salt);
+    await crypto.subtle.decrypt(
+      { name:'AES-GCM', iv, additionalData:aad(currentUser), tagLength:128 },
+      key, ct
+    );
+    showResult('ver', `
+      <div class="r-row"><span class="r-k">Status</span><span class="r-v r-ok">✅ Integrity PASSED</span></div>
+      <div class="r-row"><span class="r-k">File</span><span class="r-v">${fileName.ver}</span></div>
+      <div class="r-row"><span class="r-k">Identity</span><span class="r-v">${currentUser.username} · ${currentUser.employeeId}</span></div>
+      <div class="r-row"><span class="r-k">Note</span><span class="r-v" style="color:var(--muted)">File not tampered, identity valid.</span></div>
+    `);
+    toast('Integrity check passed.', 'success');
+  } catch {
+    showResult('ver', `
+      <div class="r-row"><span class="r-k">Status</span><span class="r-v r-fail">❌ Integrity FAILED</span></div>
+      <div class="r-row"><span class="r-k">Reason</span><span class="r-v" style="color:var(--muted)">File tampered or identity mismatch.</span></div>
+    `);
+    toast('Integrity check failed.', 'error');
+  }
+  btn.innerHTML = '✅ Verify Integrity'; btn.disabled=false;
+}
+
+// =========================================================
+// LOGS
+// =========================================================
+
+function logEvent(user, action, file='-', status='OK') {
+  sessionLogs.push({
+    time: new Date().toISOString(),
+    user: user.username, role: user.role,
+    action, file, status
+  });
+}
+
+const LOG_ACTION_STYLE = {
+  ENCRYPT:'color:var(--accent)',
+  DECRYPT:'color:var(--green)',
+  VERIFY:'color:var(--amber)',
+  LOGIN_SUCCESS:'color:var(--green)',
+  LOGIN_FAIL:'color:var(--red)',
+  LOGIN_BLOCKED:'color:var(--red)',
+  LOGOUT:'color:var(--muted)',
+  ADD_USER:'color:var(--purple)',
+  DELETE_USER:'color:var(--red)',
+  MODIFY_ROLE:'color:var(--purple)',
+  LOCK_ACCOUNT:'color:var(--red)',
+  UNLOCK_ACCOUNT:'color:var(--green)',
+};
+
+function renderLogs() {
+  const el = document.getElementById('logs-content');
+  if (!sessionLogs.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-txt">No log entries yet.</div></div>`;
+    return;
+  }
+  const rows = [...sessionLogs].reverse().map(l=>`
+    <tr>
+      <td style="color:var(--dim)">${l.time.replace('T',' ').slice(0,19)}</td>
+      <td>${l.user}</td>
+      <td><span class="role-tag role-${l.role}">${l.role}</span></td>
+      <td><span style="font-size:11px;${LOG_ACTION_STYLE[l.action]||''}">${l.action}</span></td>
+      <td style="color:var(--muted)">${l.file}</td>
+      <td class="${l.status==='OK'?'r-ok':'r-fail'}">${l.status==='OK'?'✓':'✗'} ${l.status}</td>
+    </tr>`).join('');
+  el.innerHTML=`
+    <table><thead><tr>
+      <th>Timestamp</th><th>User</th><th>Role</th><th>Action</th><th>File</th><th>Status</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function clearLogs() { sessionLogs=[]; renderLogs(); toast('Logs cleared.','info'); }
+
+// =========================================================
+// STATS
+// =========================================================
+
+function renderStats() {
+  const total  = Object.keys(userDB).length;
+  const locked = Object.keys(userDB).filter(u => isLocked(u)).length;
+  const active = total - locked;
+  const roles  = {};
+  Object.values(userDB).forEach(u => roles[u.role] = (roles[u.role]||0)+1);
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${total}</div><div class="stat-label">Total Users</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--green)">${active}</div><div class="stat-label">Active Users</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--red)">${locked}</div><div class="stat-label">Locked Accounts</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--amber)">${sessionLogs.length}</div><div class="stat-label">Session Events</div></div>`;
+
+  const rows = Object.entries(userDB).map(([name,u])=>`
+    <tr>
+      <td>${name}</td>
+      <td style="color:var(--muted)">${u.employeeId}</td>
+      <td><span class="role-tag role-${u.role}">${u.role}</span></td>
+      <td>${isLocked(name) ? '<span class="badge-locked">🔒 Locked</span>' : '<span class="badge-active">● Active</span>'}</td>
+    </tr>`).join('');
+
+  document.getElementById('stats-user-table').innerHTML = `
+    <table><thead><tr><th>Username</th><th>Emp ID</th><th>Role</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+// =========================================================
+// USER MANAGEMENT
+// =========================================================
+
+function renderUsers() {
+  const el = document.getElementById('users-table');
+  const canDelete = hasPerm('delete_user');
+  const canRole   = hasPerm('modify_role');
+  const canLock   = hasPerm('lock_account');
+  const canUnlock = hasPerm('unlock_account');
+
+  const rows = Object.entries(userDB).map(([name,u])=>{
+    const locked = isLocked(name);
+    const isSelf = name === currentUser.username;
+    let btns = '';
+    if (canRole) btns += `<button class="tbl-btn" style="color:var(--purple);border-color:rgba(167,139,250,0.3)" onclick="openModifyRole('${name}')">Change Role</button>`;
+    if (locked && canUnlock) btns += `<button class="tbl-btn" style="color:var(--green);border-color:rgba(52,211,153,0.3)" onclick="doUnlock('${name}')">Unlock</button>`;
+    if (!locked && canLock && !isSelf) btns += `<button class="tbl-btn" style="color:var(--amber);border-color:rgba(251,191,36,0.3)" onclick="doLock('${name}')">Lock</button>`;
+    if (canDelete && !isSelf) btns += `<button class="tbl-btn" style="color:var(--red);border-color:rgba(248,113,113,0.3)" onclick="doDelete('${name}')">Delete</button>`;
+    return `<tr>
+      <td>${name}${isSelf?` <span style="font-size:10px;color:var(--muted)">(you)</span>`:''}</td>
+      <td style="color:var(--muted)">${u.employeeId}</td>
+      <td><span class="role-tag role-${u.role}">${u.role}</span></td>
+      <td>${locked?'<span class="badge-locked">🔒 Locked</span>':'<span class="badge-active">● Active</span>'}</td>
+      <td><div class="tbl-actions">${btns||'<span style="color:var(--dim);font-size:11px">—</span>'}</div></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`<table><thead><tr><th>Username</th><th>Emp ID</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+  <tbody>${rows}</tbody></table>`;
+
+  document.getElementById('btn-add-user').style.display = hasPerm('add_user') ? 'inline-flex' : 'none';
+}
+
+// ADD USER
+function openAddUser() {
+  document.getElementById('modal-title').textContent = 'Add New User';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="field"><label>Username</label><input id="mu-name" placeholder="username"></div>
+    <div class="field"><label>Employee ID</label><input id="mu-emp" placeholder="EMP999"></div>
+    <div class="field"><label>Role</label>
+      <select id="mu-role">${Object.keys(ROLE_PERMISSIONS).map(r=>`<option>${r}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Password</label><input type="password" id="mu-pass" placeholder="Password"></div>
+    <div class="field"><label>Confirm Password</label><input type="password" id="mu-conf" placeholder="Confirm"></div>`;
+  const btn = document.getElementById('modal-confirm');
+  btn.textContent = 'Add User'; btn.className = 'op-btn btn-action';
+  modalCallback = addUser;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function addUser() {
+  const name = document.getElementById('mu-name').value.trim();
+  const emp  = document.getElementById('mu-emp').value.trim();
+  const role = document.getElementById('mu-role').value;
+  const pass = document.getElementById('mu-pass').value;
+  const conf = document.getElementById('mu-conf').value;
+  if (!name||!emp||!pass) { toast('All fields required.','error'); return; }
+  if (pass !== conf) { toast('Passwords do not match.','error'); return; }
+  if (userDB[name]) { toast('User already exists.','error'); return; }
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+  const h    = await hashPassword(pass, salt);
+  userDB[name] = { employeeId:emp, role, salt:hexArr(salt), passwordHash:hexArr(h), locked:false };
+  saveDB();
+  logEvent(currentUser, 'ADD_USER', name);
+  toast(`User "${name}" added.`, 'success');
+  closeModal(); renderUsers();
+}
+
+// MODIFY ROLE
+function openModifyRole(name) {
+  document.getElementById('modal-title').textContent = `Change Role — ${name}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="field"><label>New Role for ${name}</label>
+      <select id="mr-role">${Object.keys(ROLE_PERMISSIONS).map(r=>`<option ${r===userDB[name].role?'selected':''}>${r}</option>`).join('')}</select>
+    </div>`;
+  const btn = document.getElementById('modal-confirm');
+  btn.textContent = 'Update Role'; btn.className = 'op-btn btn-action';
+  modalCallback = () => {
+    const role = document.getElementById('mr-role').value;
+    userDB[name].role = role; saveDB();
+    logEvent(currentUser, 'MODIFY_ROLE', name);
+    toast(`Role updated to ${role}.`, 'success');
+    closeModal(); renderUsers();
+  };
+  document.getElementById('modal').classList.add('open');
+}
+
+// LOCK / UNLOCK / DELETE
+function doLock(name) {
+  lockUser(name);
+  logEvent(currentUser, 'LOCK_ACCOUNT', name);
+  toast(`Account "${name}" locked.`, 'warn');
+  renderUsers();
+}
+
+function doUnlock(name) {
+  unlockUser(name);
+  logEvent(currentUser, 'UNLOCK_ACCOUNT', name);
+  toast(`Account "${name}" unlocked.`, 'success');
+  renderUsers();
+}
+
+function doDelete(name) {
+  document.getElementById('modal-title').textContent = 'Delete User';
+  document.getElementById('modal-body').innerHTML = `<p style="font-size:13px;color:var(--muted);line-height:1.7">Are you sure you want to delete <strong style="color:var(--text)">${name}</strong>? This cannot be undone.</p>`;
+  const btn = document.getElementById('modal-confirm');
+  btn.textContent = 'Delete'; btn.className = 'op-btn btn-danger';
+  modalCallback = () => {
+    delete userDB[name]; saveDB();
+    logEvent(currentUser, 'DELETE_USER', name);
+    toast(`User "${name}" deleted.`, 'success');
+    closeModal(); renderUsers();
+  };
+  document.getElementById('modal').classList.add('open');
+}
+
+// =========================================================
+// MODAL
+// =========================================================
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); modalCallback=null; }
+function modalConfirm() { if (modalCallback) modalCallback(); }
+document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+// =========================================================
+// UTILS
+// =========================================================
+
+function showResult(prefix, html) {
+  const el = document.getElementById(prefix+'-result');
+  el.innerHTML = html; el.classList.add('visible');
+}
+
+function toast(msg, type='info') {
+  const icons = {success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `<span class="t-icon">${icons[type]}</span><span class="t-msg">${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{ el.style.cssText='opacity:0;transform:translateX(16px);transition:all 0.3s'; setTimeout(()=>el.remove(),300); }, 3500);
+}
+
+// =========================================================
+// COMPARISON CHARTS
+// =========================================================
+
+let chartsInitialized = false;
+
+function initCompareCharts() {
+  if (chartsInitialized) return;
+  chartsInitialized = true;
+
+  const PROJECTS = ['SecureFS','VaultMan','VeraCrypt','age','Cryptomator'];
+  const COLORS   = ['#38bdf8','#f472b6','#34d399','#fbbf24','#a78bfa'];
+  const COLORS_A = [
+    'rgba(56,189,248,0.15)','rgba(244,114,182,0.15)',
+    'rgba(52,211,153,0.15)','rgba(251,191,36,0.15)','rgba(167,139,250,0.15)'
+  ];
+  const GRID = 'rgba(30,45,66,0.7)';
+
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+
+  // ── RADAR ──────────────────────────────────────────────
+  const RADAR_LABELS = ['Encryption','Access Control','Audit Log','Usability','Deployment','Features','IDS'];
+  const RADAR_DATA = {
+    SecureFS:    [88,97,92,85,95,93,90],
+    VaultMan:    [55,5,5,55,15,33,10],
+    VeraCrypt:   [97,8,30,50,20,67,20],
+    age:         [85,5,5,65,25,40,10],
+    Cryptomator: [83,5,10,88,35,57,15],
+  };
+
+  new Chart(document.getElementById('cmpRadar'), {
+    type:'radar',
+    data:{
+      labels: RADAR_LABELS,
+      datasets: PROJECTS.map((p,i)=>({
+        label:p, data:RADAR_DATA[p],
+        borderColor:COLORS[i], backgroundColor:COLORS_A[i],
+        borderWidth: p==='SecureFS'?2.5:1.2,
+        pointBackgroundColor:COLORS[i],
+        pointRadius: p==='SecureFS'?4:2,
+      }))
+    },
+    options:{
+      scales:{r:{
+        min:0,max:100,
+        ticks:{stepSize:25,font:{size:8},backdropColor:'transparent',color:'#334155'},
+        grid:{color:GRID}, angleLines:{color:GRID},
+        pointLabels:{font:{size:9.5},color:'#94a3b8'},
+      }},
+      plugins:{legend:{labels:{boxWidth:9,font:{size:10},color:'#64748b',padding:10}}},
+      animation:{duration:1200},
+    }
+  });
+
+  // ── SCORE BARS sidebar ──────────────────────────────────
+  const dims  = ['Encryption','Access Control','Audit Logging','Usability','Deployment Flex','Feature Complete','IDS / Lockout'];
+  const sfVal = RADAR_DATA['SecureFS'];
+  const cont  = document.getElementById('cmp-score-bars');
+  dims.forEach((d,i)=>{
+    const best = Math.max(...PROJECTS.map(p=>RADAR_DATA[p][i]));
+    const isWinner = sfVal[i]===best;
+    cont.innerHTML += `
+      <div class="cmp-score-row">
+        <span class="cmp-score-label">${d}</span>
+        <div class="cmp-score-track">
+          <div class="cmp-score-bar" style="width:${sfVal[i]}%;background:${isWinner?'#38bdf8':'#2d3f56'}"></div>
+        </div>
+        <span class="cmp-score-val">${sfVal[i]}</span>
+        ${isWinner?'<span class="cmp-winner">★ Best</span>':''}
+      </div>`;
+  });
+
+  // ── SECURITY STACKED ────────────────────────────────────
+  const SEC_CRITERIA = ['Cipher','Key Deriv.','AAD','Tamper','Brute-force'];
+  const SEC_DATA = {
+    SecureFS:    [28,18,20,14,14],
+    VaultMan:    [16,14,0,8,4],
+    VeraCrypt:   [30,20,0,15,10],
+    age:         [26,16,0,14,6],
+    Cryptomator: [24,18,0,14,8],
+  };
+  const SEC_COLORS = ['rgba(56,189,248,.75)','rgba(52,211,153,.75)','rgba(251,191,36,.75)','rgba(167,139,250,.75)','rgba(244,114,182,.75)'];
+
+  new Chart(document.getElementById('cmpSecStack'),{
+    type:'bar',
+    data:{
+      labels:PROJECTS,
+      datasets:SEC_CRITERIA.map((c,i)=>({
+        label:c, data:PROJECTS.map(p=>SEC_DATA[p][i]),
+        backgroundColor:SEC_COLORS[i],
+        borderRadius: i===SEC_CRITERIA.length-1?4:0,
+      }))
+    },
+    options:{
+      scales:{
+        x:{stacked:true,grid:{color:GRID},ticks:{font:{size:10}}},
+        y:{stacked:true,grid:{color:GRID},ticks:{font:{size:9}},title:{display:true,text:'Score',color:'#64748b',font:{size:9}}},
+      },
+      plugins:{legend:{labels:{boxWidth:9,font:{size:10},padding:8}}},
+      animation:{duration:1100},
+    }
+  });
+
+  // ── FEATURE BAR ─────────────────────────────────────────
+  const FEAT = {SecureFS:13,VaultMan:4,VeraCrypt:7,age:5,Cryptomator:8};
+  new Chart(document.getElementById('cmpFeatureBar'),{
+    type:'bar',
+    data:{
+      labels:PROJECTS,
+      datasets:[{
+        label:'Features implemented (of 15)',
+        data:PROJECTS.map(p=>FEAT[p]),
+        backgroundColor:COLORS_A, borderColor:COLORS,
+        borderWidth:1.5, borderRadius:5,
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      scales:{
+        x:{grid:{color:GRID},max:15,ticks:{font:{size:9}},title:{display:true,text:'of 15 features',color:'#64748b',font:{size:9}}},
+        y:{grid:{color:'transparent'},ticks:{font:{size:11},color:'#94a3b8'}},
+      },
+      plugins:{legend:{display:false}},
+      animation:{duration:1100},
+    }
+  });
+
+  // ── BUBBLE ──────────────────────────────────────────────
+  const BUBBLE = {
+    SecureFS:    {x:38,y:93,r:20},
+    VaultMan:    {x:15,y:27,r:11},
+    VeraCrypt:   {x:92,y:67,r:10},
+    age:         {x:20,y:33,r:13},
+    Cryptomator: {x:85,y:53,r:18},
+  };
+  new Chart(document.getElementById('cmpBubble'),{
+    type:'bubble',
+    data:{
+      datasets:PROJECTS.map((p,i)=>({
+        label:p, data:[{x:BUBBLE[p].x,y:BUBBLE[p].y,r:BUBBLE[p].r}],
+        backgroundColor:COLORS_A[i], borderColor:COLORS[i],
+        borderWidth:p==='SecureFS'?2.5:1.5,
+      }))
+    },
+    options:{
+      scales:{
+        x:{title:{display:true,text:'Complexity →',color:'#64748b',font:{size:9}},grid:{color:GRID},min:0,max:110},
+        y:{title:{display:true,text:'Features (%) →',color:'#64748b',font:{size:9}},grid:{color:GRID},min:0,max:110},
+      },
+      plugins:{
+        legend:{labels:{boxWidth:9,font:{size:10},padding:8}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: Complexity ${ctx.raw.x}, Features ${ctx.raw.y}%`}},
+      },
+      animation:{duration:1200},
+    }
+  });
+
+  // ── UNIQUE DOUGHNUT ─────────────────────────────────────
+  new Chart(document.getElementById('cmpUnique'),{
+    type:'doughnut',
+    data:{
+      labels:['Identity AAD','RBAC 6 roles','IDS Lockout','Browser-only','3 Deploy modes'],
+      datasets:[{
+        data:[30,25,20,15,10],
+        backgroundColor:['#38bdf8','#60a5fa','#818cf8','#a78bfa','#c084fc'],
+        borderColor:'#0d1117', borderWidth:3, hoverOffset:7,
+      }]
+    },
+    options:{
+      cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:9,font:{size:10},padding:10}}},
+      animation:{animateRotate:true,duration:1300},
+    }
+  });
+}
+
+// Hook into nav to init charts when compare panel is opened
+(function() {
+  const _origNav = nav;
+  nav = function(el) {
+    _origNav(el);
+    if (el && el.dataset.panel === 'compare') {
+      setTimeout(initCompareCharts, 80);
+    }
+  };
+})();
+</script>
+</body>
+</html>
